@@ -1,0 +1,375 @@
+﻿<!DOCTYPE html>
+
+<html>
+
+<div id="info">
+  <center><button id='toggleMe'>
+    Turn off
+  </button></center>
+  <p id="pInfo"></p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js">
+</script>
+
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+
+<head>
+
+<meta charset="UTF-8">
+
+<style>
+
+body {
+  overflow: hidden
+}
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ffff00
+}
+
+</style>
+</head>
+
+<body> 
+<script>
+
+var camera, scene, renderer, controls;
+var pickables = [];
+var raycaster;
+var mouse = new THREE.Vector2();
+var status = true;
+var spotLight = [];
+
+init();
+animate();
+
+$('#toggleMe').click(function () { 
+	toggle();
+});
+
+function toggle() {
+  status = !status;
+
+  if (!status) {
+    $('#toggleMe').text ('Turn on');
+    lightTurn( status );
+  } else {
+    $('#toggleMe').text ('Turn off');
+    lightTurn( status );
+  }
+}
+
+function buildWall( kind, w, degree, x, z ){
+
+	var material = new THREE.MeshLambertMaterial( { color:0xffffff } );
+  switch( kind ){
+  	case 1:
+    	var geometry = new THREE.BoxGeometry( w, 300, 20);
+      var wall = new THREE.Mesh( geometry, material );
+    	break;
+    case 2:
+    	var geometry = new THREE.BoxGeometry( w, 300, 10);
+      var wall = new THREE.Mesh( geometry, material );
+    	break;
+  }
+  
+  wall.rotation.y = degree;
+  wall.position.set( x, 150, z );
+  
+  scene.add(wall);
+}
+
+function chair() {
+	
+  THREE.ImageUtils.crossOrigin = '';
+  var texture = THREE.ImageUtils.loadTexture( 'http://i.imgur.com/c24Hb1b.jpg' );
+  
+	var geometry = new THREE.BoxGeometry( 300, 70, 100 );
+  var material = new THREE.MeshLambertMaterial( { map:texture } );
+  var cube = new THREE.Mesh( geometry, material );
+  
+  cube.rotation.y = Math.PI/2;
+  cube.position.set( -180, 25, -120 );
+  scene.add( cube );
+}
+
+function canvas( kind, x, z , degree, name, picture ) {
+
+	THREE.ImageUtils.crossOrigin = '';
+  var texture = THREE.ImageUtils.loadTexture( picture );
+  
+  var material = new THREE.MeshLambertMaterial( { map:texture } );
+	switch( kind ){
+  	case 1:
+    	var geometry = new THREE.PlaneGeometry( 162, 130, 32 );
+      var paint = new THREE.Mesh( geometry, material );
+    	break;
+    case 2:
+    	var geometry = new THREE.PlaneGeometry( 300, 130, 32 );
+      var paint = new THREE.Mesh( geometry, material );
+    	break;
+    case 3:
+    	var geometry = new THREE.PlaneGeometry( 130, 162, 32 );
+      var paint = new THREE.Mesh( geometry, material );
+    	break;
+  }
+	
+  paint.rotation.y = degree;
+  paint.position.set( x, 160, z );
+  paint.name = name;
+  
+  pickables.push( paint );
+  
+  scene.add( paint );
+  
+  showLight( x, z, degree, paint );
+}
+
+function showLight( x, z, degree, mesh ) {
+	
+  var lamp = new THREE.Object3D();
+  
+	var geometry = new THREE.CylinderGeometry( 5, 5, 20, 32 );
+  var material = new THREE.MeshBasicMaterial( {color: 0x888888} );
+  var cylinder = new THREE.Mesh( geometry, material );
+  cylinder.rotation.x = -Math.PI/2;
+  
+  lamp.add( cylinder );
+  
+  var light = new THREE.SpotLight( 0xffffaa, 1.5, 300, 1 );
+
+  light.castShadow = true;
+
+  light.shadow.mapSize.width = 1024;
+  light.shadow.mapSize.height = 1024;
+
+  light.shadow.camera.near = 500;
+  light.shadow.camera.far = 4000;
+  light.shadow.camera.fov = 30;
+  light.target = mesh;
+	
+  if(degree == -Math.PI/2) {
+  	lamp.position.set( x - 100, 280, z );
+    light.position.set( x - 100, 280, z );
+  }
+  else if (degree == Math.PI/2) {
+  	lamp.position.set( x + 100, 280, z );
+    light.position.set( x + 100, 280, z );
+  }
+  else if (degree == Math.PI) {
+  	lamp.position.set( x, 280, z - 100 );
+    light.position.set( x, 280, z - 100 );
+  }
+  else {
+  	lamp.position.set( x, 280, z + 100 );
+  	light.position.set( x, 280, z + 100 );
+  }
+  
+  spotLight.push( light );
+  lamp.lookAt( new THREE.Vector3( x, 160, z ) );
+  
+  scene.add( lamp );
+  lightTurn( status );
+}
+
+function lightTurn( turn ) {
+	if(turn){
+  	for(var i = 0; i < 9; i++){
+    	scene.add(spotLight[i]);
+    }
+  }
+  else {
+  	for(var i = 0; i < 9; i++){
+    	scene.remove(spotLight[i]);
+    }
+  }
+}
+
+function init() {
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.set( 0, 1200, 700);
+  camera.lookAt (new THREE.Vector3(0,0,0));
+  scene.add(camera);
+  
+  var x = -600;
+  for( var j = 0; j < 2; j++, x += 1200) {
+  	z = -600;
+  	for( var i = 0; i < 2; i++, z += 1200){
+      var light = new THREE.PointLight( 0xffffff, .5 );
+      light.position.set( x, 1000, z );
+      scene.add( light );
+    }
+  }
+  
+  var gridXZ = new THREE.GridHelper( 1200, 20, 'red', 'white');
+  scene.add(gridXZ);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  document.body.appendChild(renderer.domElement);
+
+/////////////////////////////////////////////////////////////////////
+  
+  THREE.ImageUtils.crossOrigin = '';
+  var texture = THREE.ImageUtils.loadTexture( 'http://i.imgur.com/X9m4a7c.jpg' );
+  plane = new THREE.Mesh(new THREE.PlaneGeometry( 960, 780, 32), new THREE.MeshBasicMaterial({
+    map:texture
+  }));
+  scene.add(plane);
+  plane.rotation.x = -Math.PI / 2;
+  plane.position.y = 1;
+  
+////////////////////////////////////////////////////////////////////////
+//
+//buildWall( kind, long, degree, pos.x, pos.z )
+// kind 1 ：較厚, kind 2 ：較薄; 
+//
+
+  buildWall( 1, 400, 0, 300, 400 );
+  buildWall( 1, 400, 0, -300, 400 );
+  buildWall( 1, 1000, 0, 0, -400 );
+  buildWall( 1, 780, Math.PI/2, -490, 0 );
+  buildWall( 1, 780, Math.PI/2, 490, 0 );
+  
+  buildWall( 1, 700, 0, 0, 200 );
+  buildWall( 1, 430, Math.PI/2, 100, -25 );
+  
+  chair();
+////////////////////////////////////////////////////////////////////////
+//
+//canvas( kind, position of x, position of z, degree, name, picture )
+// kind 1：162 X 130, kind 2：300 X 130, kind 3：130 X 162;
+//
+
+	canvas( 2, -479.7, -100, Math.PI/2, 'The Skiff',
+  'http://i.imgur.com/QzPH8t0.jpg' );
+	canvas( 1, -270, -389.7, 0, 'Oarsmen at Chatou',
+  'http://i.imgur.com/fm68ZqJ.jpg' );
+  canvas( 1, 0, -389.7, 0, 'Dance in the Country',
+  'http://i.imgur.com/p8BRtXL.jpg' );
+  canvas( 1, 270, -389.7, 0, 'The Umbrellas',
+	'http://i.imgur.com/enKjEwt.jpg' );
+  canvas( 2, 479.7, -100, -Math.PI/2, 'The Bathers',
+  'http://i.imgur.com/VF2rxyc.jpg' );
+  
+  canvas( 3, 230, 189.7, Math.PI, 'Girl with a Hoop',
+  'http://i.imgur.com/kh2EpXw.jpg' );
+  canvas( 2, 110.3, -25, Math.PI/2, 'Sunset at Sea',
+  'http://i.imgur.com/VkRtqVP.jpg' );
+  canvas( 2, 89.7, -25, -Math.PI/2, 'Luncheon of the Boating Party',
+  'http://i.imgur.com/za9bxMZ.jpg' );
+  canvas( 2, -130, 189.7, Math.PI, 'La Grenouillere',
+  'http://i.imgur.com/mVbLKLO.jpg' );
+  
+//////////////////////////////////////////////////////////////////////////
+  raycaster = new THREE.Raycaster();
+  document.addEventListener('mousedown', onDocumentMouseDown, false);
+  document.addEventListener('mousemove', onDocumentMouseMove, false);
+  
+}
+
+function onDocumentMouseDown(event) {
+
+  // PICKING DETAILS: 
+  // convert mouse.xy = [-1,1]^2 (NDC)
+  // unproject (mouse.xy, 1) to a point on the far plane (in world coordinate)
+  // set raycaster (origin, direction)
+  // find intersection objects, (closest first) 
+  // each record as
+  // [ { distance, point, face, faceIndex, object }, ... ]
+
+  event.preventDefault();
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  // if recursive set to true, can go deeper into object3D hierarchy 
+  //  var intersects = raycaster.intersectObjects( pickables, true );
+  var intersects = raycaster.intersectObjects(pickables);
+  if (intersects.length > 0) {
+    if (intersects[0].object.name === "The Skiff")
+    	$('#pInfo').text(
+      	'The Skiff，創作時間：1875年，類型：風景畫'
+      );
+    else if (intersects[0].object.name === "Oarsmen at Chatou")
+    	$('#pInfo').text(
+      	'Oarsmen at Chatou，創作時間：1879年，類型：歷史畫，畫風：印象派'
+      );
+    else if (intersects[0].object.name === "Dance in the Country")
+    	$('#pInfo').text(
+      	'Dance in the Country，創作時間：1882年 – 1883年，類型：歷史畫，畫風：印象派'
+      );
+    else if (intersects[0].object.name === "The Umbrellas")
+    	$('#pInfo').text(
+      	'The Umbrellas，創作時間：1886年，類型：歷史畫，畫風：印象派'
+      );
+    else if (intersects[0].object.name === "The Bathers")
+    	$('#pInfo').text(
+      	'The Bathers，創作時間：1918年 – 1919年，類型：現代藝術，畫風：印象派'
+      );
+    else if (intersects[0].object.name === "Girl with a Hoop")
+    	$('#pInfo').text(
+      	'Girl with a Hoop，創作時間：1885年，類型：歷史畫，畫風：印象派'
+      );
+    else if (intersects[0].object.name === "Sunset at Sea")
+    	$('#pInfo').text(
+      	'Sunset at Sea，創作時間：1879年，畫風：印象派'
+      );
+    else if (intersects[0].object.name === "Luncheon of the Boating Party")
+    	$('#pInfo').text(
+      	'Luncheon of the Boating Party，創作時間：1880年 – 1881年，類型：現代藝術，畫風： 印象派'
+      );
+    else if (intersects[0].object.name === "La Grenouillere")
+    	$('#pInfo').text(
+      	'La Grenouillere，創作時間：1869年 – 1869年，類型：歷史畫'
+      );
+  }
+
+}
+
+function onDocumentMouseMove(event) {
+
+  event.preventDefault();
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  var intersects = raycaster.intersectObjects(pickables);
+
+  if (intersects.length > 0) {
+    document.body.style.cursor = 'pointer';
+  } else {
+    document.body.style.cursor = 'auto';
+  }
+  
+}
+
+function animate() {
+  controls.update();
+  requestAnimationFrame(animate);
+  render();
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+</script>
+</body>
+
+</html>
