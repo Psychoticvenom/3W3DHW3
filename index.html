@@ -41,8 +41,7 @@ body {
 
 var camera, scene, renderer, controls;
 var pickables = [];
-var raycaster;
-var mouse = new THREE.Vector2();
+var raycaster, mouse = new THREE.Vector2();
 var status = true;
 var spotLight = [];
 
@@ -65,6 +64,36 @@ function toggle() {
   }
 }
 
+function loadTexture( mesh, url ) {
+
+	// instantiate a loader
+  var loader = new THREE.TextureLoader();
+  loader.setCrossOrigin('');
+  
+  // load a resource
+  loader.load(
+    // resource URL
+    url, // Lena
+    // Function when resource is loaded
+    function (tex) {
+    	console.log ('texture loaded ...');
+      mesh.material = new THREE.MeshLambertMaterial( { map : tex } );
+      
+      // for global access with Keypress
+    },
+
+    // Function called when download progresses
+    function(xhr) {
+      console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+    },
+    // Function called when download errors
+    function(xhr) {
+      console.log('An error happened');
+    }
+  );
+  
+}
+
 function buildWall( kind, w, degree, x, z ){
 
 	var material = new THREE.MeshLambertMaterial( { color:0xffffff } );
@@ -83,20 +112,21 @@ function buildWall( kind, w, degree, x, z ){
   wall.position.set( x, 150, z );
   
   scene.add(wall);
+  
 }
 
 function chair() {
-	
-  THREE.ImageUtils.crossOrigin = '';
-  var texture = THREE.ImageUtils.loadTexture( 'http://i.imgur.com/c24Hb1b.jpg' );
   
 	var geometry = new THREE.BoxGeometry( 300, 70, 100 );
-  var material = new THREE.MeshLambertMaterial( { map:texture } );
+  var material = new THREE.MeshLambertMaterial();
   var cube = new THREE.Mesh( geometry, material );
-  
+ 	
   cube.rotation.y = Math.PI/2;
   cube.position.set( -180, 25, -120 );
   scene.add( cube );
+  
+  loadTexture( cube, 'http://i.imgur.com/c24Hb1b.jpg' );
+  
 }
 
 function canvas( kind, x, z , degree, name, picture ) {
@@ -104,7 +134,7 @@ function canvas( kind, x, z , degree, name, picture ) {
 	THREE.ImageUtils.crossOrigin = '';
   var texture = THREE.ImageUtils.loadTexture( picture );
   
-  var material = new THREE.MeshLambertMaterial( { map:texture } );
+  var material = new THREE.MeshLambertMaterial();
 	switch( kind ){
   	case 1:
     	var geometry = new THREE.PlaneGeometry( 162, 130, 32 );
@@ -129,6 +159,9 @@ function canvas( kind, x, z , degree, name, picture ) {
   scene.add( paint );
   
   showLight( x, z, degree, paint );
+  
+  loadTexture( paint, picture );
+  
 }
 
 function showLight( x, z, degree, mesh ) {
